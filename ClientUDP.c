@@ -10,30 +10,35 @@
 #include <arpa/inet.h>
 // pour close 
 #include <unistd.h>
+
+#define BUFFSIZE 2000
+#define PORT 2000
+
 int main(void){
     int socket_desc;
     struct sockaddr_in server_addr;
-    char server_message[2000], client_message[2000];
+    char server_message[BUFFSIZE], client_message[BUFFSIZE];
     int server_struct_length = sizeof(server_addr);
     
     // Clean buffers:
-    memset(server_message, '\0', sizeof(server_message));
-    memset(client_message, '\0', sizeof(client_message));
+    memset(server_message, '\0', BUFFSIZE);
+    memset(client_message, '\0', BUFFSIZE);
     
     // Create socket:
     socket_desc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     
     if(socket_desc < 0){
-        printf("Error while creating socket\n");
+        printf("Erreur lors de la création de la socket\n");
         return -1;
     }
-    printf("Socket created successfully\n");
+    printf("Socket créee avec succès \n");
     
-    // Set port and IP:
+    // Fixe port & IP:
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(2000);
+    server_addr.sin_port = htons(PORT);
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     
+    // Three-way handshake avec le serveur:
     char *SYN = "SYN";
     char *ACK = "ACK";
 
@@ -42,18 +47,18 @@ int main(void){
 
     recvfrom(socket_desc, server_message, sizeof(server_message), 0,
             (struct sockaddr*)&server_addr, &server_struct_length);
-
-    
     if(strncmp("SYN-ACK", server_message, 3) == 0)
     {
         int nvx_port = ((int)server_message[8]-48)*1000 + ((int)server_message[9]-48)*100+ ((int)server_message[10]-48)*10 + ((int)server_message[11]-48);
-        printf("port : %d\n", nvx_port);
+        printf("nouveau port : %d\n", nvx_port);
 
         sendto(socket_desc, ACK, strlen(ACK), 0,
             (struct sockaddr*)&server_addr, server_struct_length);
         
-        
-        // CONNECTE - rejoint socket direct entre moi et le serveur 
+        // Protocole connecté !
+        printf("Bien connecté ! \n");
+
+        // Creation socket UDP directe avec le client:
         server_addr.sin_port = htons(nvx_port);
 
         // reception d'un fichier : 
@@ -62,45 +67,46 @@ int main(void){
         recvfrom(socket_desc, server_message, sizeof(server_message), 0,
                 (struct sockaddr*)&server_addr, &server_struct_length);
         
-        FILE *fp = fopen ("FichierTexteRecu.txt", "w"); 
+        FILE *fp = fopen ("FichierTexteReçu.txt", "w"); 
         if(fp == NULL) {
             perror ("Error in opening file");
             exit(-1);
         }
 
-        fwrite (server_message, 1, sizeof(server_message), fp); 
+        fwrite (server_message, 1, BUFFSIZE, fp); 
         fclose(fp);
-        printf("Fichier envoyé !\n");
+        printf("Fichier bien reçu !\n");
 
         while (1)
         {
-            memset(server_message, '\0', sizeof(server_message));
-            memset(client_message, '\0', sizeof(client_message));
+            memset(server_message, '\0', BUFFSIZE);
+            memset(client_message, '\0', BUFFSIZE);
 
             // Get input from the user:
             printf("Enter message: ");
             gets(client_message);
             
-            // Send the message to server:
+            // Envoie du message au serveur:
             if(sendto(socket_desc, client_message, strlen(client_message), 0,
                 (struct sockaddr*)&server_addr, server_struct_length) < 0){
-                printf("Unable to send message\n");
+                printf("Envoie impossible\n");
                 return -1;
             }
             
-            // Receive the server's response:
-            if(recvfrom(socket_desc, server_message, sizeof(server_message), 0,
+            // Reception du message du serveur:
+            if(recvfrom(socket_desc, server_message, BUFFSIZE, 0,
                 (struct sockaddr*)&server_addr, &server_struct_length) < 0){
-                printf("Error while receiving server's msg\n");
+                printf("Erreur lors de la reception\n");
                 return -1;
             }
             
-            printf("Server's response: %s\n", server_message);
+            printf("Message du client: %s\n", server_message);
         }
+    } else {
+        printf("erreur Threeway handshake");
     }
-    // Close the socket:
-    close(socket_desc);
     
+    close(socket_desc);
     return 0;
 }
 

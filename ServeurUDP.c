@@ -12,123 +12,125 @@
 #include <unistd.h>
 // https://www.educative.io/answers/how-to-implement-udp-sockets-in-c
 
+#define BUFFSIZE 2000
+#define PORT 2000
+
 int main(void){
     int socket_desc, Sous_socket;
-    struct sockaddr_in server_addr, client_addr, sc_addr;
-    char server_message[2000], client_message[2000];
+    struct sockaddr_in server_addr, client_addr, ss_addr;
+    char server_message[BUFFSIZE], client_message[BUFFSIZE];
     int client_struct_length = sizeof(client_addr);
     
-    // Clean buffers:
-    memset(server_message, '\0', sizeof(server_message));
-    memset(client_message, '\0', sizeof(client_message));
+    // Vide les buffers:
+    memset(server_message, '\0', BUFFSIZE);
+    memset(client_message, '\0', BUFFSIZE);
     
-    // Create UDP socket:
+    // Creation socket UDP :
     socket_desc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     
     if(socket_desc < 0){
-        printf("Error while creating socket\n");
+        printf("Erreur lors de la création de la socket\n");
         return -1;
     }
-    printf("Socket created successfully\n");
+    printf("Socket créee avec succès \n");
     
-    // Set port and IP:
+    // Fixe port & IP:
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(2000);
+    server_addr.sin_port = htons(PORT);
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     
-    // Bind to the set port and IP:
+    // Bind aux port & @IP:
     if(bind(socket_desc, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0){
-        printf("Couldn't bind to the port\n");
+        printf("Erreur lors du bind\n");
         return -1;
     }
-    printf("Done with binding\n");
+    printf("Bind réussie\n");
 
-    // Connection
+    // Three-way handshake avec un client:
     char *SYN_ACK = "SYN-ACK 4000";
 
-    recvfrom(socket_desc, client_message, sizeof(client_message), 0,
+    recvfrom(socket_desc, client_message, BUFFSIZE, 0,
             (struct sockaddr*)&client_addr, &client_struct_length);
-    
     if(strncmp("SYN", client_message, 3) == 0)
     {
         sendto(socket_desc, SYN_ACK, strlen(SYN_ACK), 0,
             (struct sockaddr*)&client_addr, client_struct_length);
     }
     
-    recvfrom(socket_desc, client_message, sizeof(client_message), 0,
+    recvfrom(socket_desc, client_message, BUFFSIZE, 0,
             (struct sockaddr*)&client_addr, &client_struct_length);
-
     if(strncmp("ACK", client_message, 3) == 0)
     {
-        // CONNECTE - crée socket direct avec le client 
+        // Protocole connecté !
+        printf("Bien connecté ! \n");
 
-        // Create UDP socket:
+        // Creation socket UDP directe avec le client:
         Sous_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if(Sous_socket < 0){
-            printf("Error while creating socket\n");
+            printf("Erreur lors de la création de la socket\n");
             return -1;
         }
-        printf("Sous Socket created successfully\n");
+        printf("Sous Socket créee avec succès ! \n");
         
-        // Set port and IP:
-        sc_addr.sin_family = AF_INET;
-        sc_addr.sin_port = htons(4000);
-        sc_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        // Fixe port & @IP:
+        ss_addr.sin_family = AF_INET;
+        ss_addr.sin_port = htons(4000);
+        ss_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
         
         // Bind to the set port and IP:
-        if(bind(Sous_socket, (struct sockaddr*)&sc_addr, sizeof(sc_addr)) < 0){
-            printf("Couldn't bind to the port\n");
+        if(bind(Sous_socket, (struct sockaddr*)&ss_addr, sizeof(ss_addr)) < 0){
+            printf("Erreur lors du bind\n");
             return -1;
         }
         printf("Done with binding\n");
 
-        // envoie d'un fichier : 
+        // Envoie d'un fichier: 
         printf("Envoie du fichier...\n");
         FILE *fp = fopen("FichierTexte.txt","r");
         if(fp == NULL) {
             perror ("Error in opening file");
             exit(-1);
         }
-
-        memset(server_message, '\0', sizeof(server_message));
+        memset(server_message, '\0', BUFFSIZE);
         while ( ! feof(fp) ) {
-            fread(server_message, 1, sizeof(server_message), fp);
+            fread(server_message, 1, BUFFSIZE, fp);
             sendto(Sous_socket, server_message, strlen(server_message), 0,
                 (struct sockaddr*)&client_addr, client_struct_length) ;
         }
         fclose(fp);
         printf("Fichier envoyé !\n");
 
-
         printf("Listening for incoming messages...\n");
         while(1)
         {
-            memset(server_message, '\0', sizeof(server_message));
-            memset(client_message, '\0', sizeof(client_message));
+            memset(server_message, '\0', BUFFSIZE);
+            memset(client_message, '\0', BUFFSIZE);
 
-            // Receive client's message:
-            if (recvfrom(Sous_socket, client_message, sizeof(client_message), 0,
+            // Reception du message du client:
+            if (recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
                 (struct sockaddr*)&client_addr, &client_struct_length) < 0){
-                printf("Couldn't receive\n");
+                printf("Erreur lors de la reception\n");
                 return -1;
             }
-            printf("Received message from IP: %s and port: %i\n",
+            printf("Message reçu de l'@IP: %s et du port: %i\n",
                 inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+            printf("Message du client: %s\n", client_message);
             
-            printf("Msg from client: %s\n", client_message);
-            
-            // Respond to client:
+            // Reponse du serveur:
             strcpy(server_message, client_message);
-            
             if (sendto(Sous_socket, server_message, strlen(server_message), 0,
                 (struct sockaddr*)&client_addr, client_struct_length) < 0){
-                printf("Can't send\n");
+                printf("Envoie impossible\n");
                 return -1;
             }
         }
         close(Sous_socket);
+
+    } else {
+        printf("erreur Threeway handshake");
     }
-    // Close the socket:
+    
     close(socket_desc);
     return 0;
 }
