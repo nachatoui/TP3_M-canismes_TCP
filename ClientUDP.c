@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #define BUFFSIZE 2000
-#define PORT 2000
+#define PORT 3000
 
 int main(void){
     int socket_desc;
@@ -61,7 +61,9 @@ int main(void){
         // Creation socket UDP directe avec le client:
         server_addr.sin_port = htons(nvx_port);
 
-        // reception d'un fichier : 
+        // reception d'un fichier : https://gist.github.com/XBachirX/865b00ba7a7c86b4fc2d7443b2c4f238 
+        // strcpy : https://www.programiz.com/c-programming/library-function/string.h/strcpy 
+        // strcat : https://koor.fr/C/cstring/strcat.wp 
         printf("Reception du fichier...\n");
         memset(server_message, '\0', sizeof(server_message));
         recvfrom(socket_desc, server_message, sizeof(server_message), 0,
@@ -105,7 +107,7 @@ int main(void){
     } else {
         printf("erreur Threeway handshake");
     }
-    
+
     close(socket_desc);
     return 0;
 }

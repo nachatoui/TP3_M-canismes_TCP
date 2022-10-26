@@ -13,10 +13,10 @@
 // https://www.educative.io/answers/how-to-implement-udp-sockets-in-c
 
 #define BUFFSIZE 2000
-#define PORT 2000
+#define PORT 3000
 
 int main(void){
-    int socket_desc, Sous_socket;
+    int socket_desc, Sous_socket, num_client = 1;
     struct sockaddr_in server_addr, client_addr, ss_addr;
     char server_message[BUFFSIZE], client_message[BUFFSIZE];
     int client_struct_length = sizeof(client_addr);
@@ -47,13 +47,21 @@ int main(void){
     printf("Bind réussie\n");
 
     // Three-way handshake avec un client:
-    char *SYN_ACK = "SYN-ACK 4000";
+    int nvx_port = PORT + num_client;
+    char char_nvx_port[5]; 
+    sprintf(char_nvx_port, "%d", nvx_port);
+
+    char *SYN_ACK = "SYN-ACK ";  
+    char buffer[30];
+    strcat(buffer, SYN_ACK);
+    strcat(buffer, char_nvx_port);
+    printf("syn ack message : %s\n", buffer);
 
     recvfrom(socket_desc, client_message, BUFFSIZE, 0,
             (struct sockaddr*)&client_addr, &client_struct_length);
     if(strncmp("SYN", client_message, 3) == 0)
     {
-        sendto(socket_desc, SYN_ACK, strlen(SYN_ACK), 0,
+        sendto(socket_desc, buffer, strlen(buffer), 0,
             (struct sockaddr*)&client_addr, client_struct_length);
     }
     
@@ -74,7 +82,8 @@ int main(void){
         
         // Fixe port & @IP:
         ss_addr.sin_family = AF_INET;
-        ss_addr.sin_port = htons(4000);
+        ss_addr.sin_port = htons(nvx_port);
+        num_client += 1;  
         ss_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
         
         // Bind to the set port and IP:
