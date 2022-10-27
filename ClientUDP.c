@@ -54,14 +54,14 @@ int main(void){
         int nvx_port = ((int)server_message[8]-48)*1000 + ((int)server_message[9]-48)*100+ ((int)server_message[10]-48)*10 + ((int)server_message[11]-48);
         printf("nouveau port : %d\n", nvx_port);
 
+        // Creation socket UDP directe avec le client:
+        server_addr.sin_port = htons(nvx_port);
+
         sendto(socket_desc, ACK, strlen(ACK), 0,
             (struct sockaddr*)&server_addr, server_struct_length);
         
         // Protocole connecté !
         printf("Bien connecté ! \n");
-
-        // Creation socket UDP directe avec le client:
-        server_addr.sin_port = htons(nvx_port);
 
         // reception d'un fichier : https://gist.github.com/XBachirX/865b00ba7a7c86b4fc2d7443b2c4f238 
         // strcpy : https://www.programiz.com/c-programming/library-function/string.h/strcpy 

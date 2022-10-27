@@ -67,14 +67,7 @@ int main(void){
             (struct sockaddr*)&client_addr, client_struct_length);
     }
     
-    recvfrom(socket_desc, client_message, BUFFSIZE, 0,
-            (struct sockaddr*)&client_addr, &client_struct_length);
-    if(strncmp("ACK", client_message, 3) == 0)
-    {
-        // Protocole connecté !
-        printf("Bien connecté ! \n");
-
-        // Creation socket UDP directe avec le client:
+    // Creation socket UDP directe avec le client:
         Sous_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if(Sous_socket < 0){
             printf("Erreur lors de la création de la socket\n");
@@ -94,6 +87,13 @@ int main(void){
             return -1;
         }
         printf("Done with binding\n");
+        
+    recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
+            (struct sockaddr*)&client_addr, &client_struct_length);
+    if(strncmp("ACK", client_message, 3) == 0)
+    {
+        // Protocole connecté !
+        printf("Bien connecté ! \n");
 
         // Envoie d'un fichier: 
         printf("Envoie du fichier...\n");
