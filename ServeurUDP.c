@@ -12,7 +12,7 @@
 #include <unistd.h>
 // https://www.educative.io/answers/how-to-implement-udp-sockets-in-c
 
-#define BUFFSIZE 2000
+#define BUFFSIZE 1000
 #define PORT 3000
 
 int main(void){
@@ -52,16 +52,18 @@ int main(void){
     sprintf(char_nvx_port, "%d", nvx_port);
 
     char *SYN_ACK = "SYN-ACK ";  
-    char buffer[30];
-    strcat(buffer, SYN_ACK);
-    strcat(buffer, char_nvx_port);
-    printf("syn ack message : %s\n", buffer);
+    
+    char buffer_SYN_ACK[30];
+    memset(buffer_SYN_ACK, '\0', 30);
+    strcat(buffer_SYN_ACK, SYN_ACK);
+    strcat(buffer_SYN_ACK, char_nvx_port);
+    printf("syn ack message : %s\n", buffer_SYN_ACK);
 
     recvfrom(socket_desc, client_message, BUFFSIZE, 0,
             (struct sockaddr*)&client_addr, &client_struct_length);
     if(strncmp("SYN", client_message, 3) == 0)
     {
-        sendto(socket_desc, buffer, strlen(buffer), 0,
+        sendto(socket_desc, buffer_SYN_ACK, strlen(buffer_SYN_ACK), 0,
             (struct sockaddr*)&client_addr, client_struct_length);
     }
     
@@ -101,39 +103,58 @@ int main(void){
             exit(-1);
         }
         memset(server_message, '\0', BUFFSIZE);
+        int num_seq = 1;
+        char char_num_seq[1000]; 
         while ( ! feof(fp) ) {
             fread(server_message, 1, BUFFSIZE, fp);
+            sprintf(char_num_seq, "%d", num_seq);
+            strcat(char_num_seq, server_message);
+            strcpy(server_message, char_num_seq);
+            num_seq += 1;
+            fflush(fp);
             sendto(Sous_socket, server_message, strlen(server_message), 0,
                 (struct sockaddr*)&client_addr, client_struct_length) ;
         }
         fclose(fp);
+        printf("num_seq %d\n", num_seq);
         printf("Fichier envoyé !\n");
 
-        printf("Listening for incoming messages...\n");
-        while(1)
-        {
-            memset(server_message, '\0', BUFFSIZE);
-            memset(client_message, '\0', BUFFSIZE);
-
-            // Reception du message du client:
-            if (recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
-                (struct sockaddr*)&client_addr, &client_struct_length) < 0){
-                printf("Erreur lors de la reception\n");
-                return -1;
-            }
-            printf("Message reçu de l'@IP: %s et du port: %i\n",
-                inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-
-            printf("Message du client: %s\n", client_message);
-            
-            // Reponse du serveur:
-            strcpy(server_message, client_message);
-            if (sendto(Sous_socket, server_message, strlen(server_message), 0,
-                (struct sockaddr*)&client_addr, client_struct_length) < 0){
-                printf("Envoie impossible\n");
-                return -1;
-            }
+        // reception du ack
+        memset(client_message, '\0', BUFFSIZE);
+        if (recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
+            (struct sockaddr*)&client_addr, &client_struct_length) < 0){
+            printf("Erreur lors de la reception\n");
+            return -1;
         }
+        printf("Message reçu de l'@IP: %s et du port: %i\n",
+            inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        printf("Message du client: %s\n", client_message);
+
+        // printf("Listening for incoming messages...\n");
+        // while(1)
+        // {
+        //     memset(server_message, '\0', BUFFSIZE);
+        //     memset(client_message, '\0', BUFFSIZE);
+
+        //     // Reception du message du client:
+        //     if (recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
+        //         (struct sockaddr*)&client_addr, &client_struct_length) < 0){
+        //         printf("Erreur lors de la reception\n");
+        //         return -1;
+        //     }
+        //     printf("Message reçu de l'@IP: %s et du port: %i\n",
+        //         inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+        //     printf("Message du client: %s\n", client_message);
+            
+        //     // Reponse du serveur:
+        //     strcpy(server_message, client_message);
+        //     if (sendto(Sous_socket, server_message, strlen(server_message), 0,
+        //         (struct sockaddr*)&client_addr, client_struct_length) < 0){
+        //         printf("Envoie impossible\n");
+        //         return -1;
+        //     }
+        // }
         close(Sous_socket);
 
     } else {
