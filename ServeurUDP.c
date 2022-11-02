@@ -96,12 +96,14 @@ int main(void){
             memset(server_message, '\0', BUFFSIZE);
             int num_seq = 1;
             char char_num_seq[6]; 
+            int FinTransmission = 0;
+            char lecture[BUFFSIZE-6];
             // A faire sur 2 fork different pour pouvoir ecouter et envoyer au même moment
             while ( ! feof(fp) ) {
-                fread(server_message, 1, BUFFSIZE-6, fp);
+                fread(lecture, 1, BUFFSIZE-6, fp);
                 Num_Sequence(num_seq, char_num_seq);
                 fflush(fp);
-                sprintf(server_message, "%s%s", char_num_seq, server_message);
+                sprintf(server_message, "%s%s", char_num_seq, lecture);
 
                 sendto(Sous_socket, server_message, strlen(server_message), 0,
                     (struct sockaddr*)&client_addr, client_struct_length) ;
@@ -114,14 +116,19 @@ int main(void){
             printf("Fichier envoyé !\n");
             printf("Message reçu de l'@IP: %s et du port: %i\n",
                             inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-            while(1)
+            while(FinTransmission == 0)
             {
                 // reception du ack
-                memset(client_message, '\0', BUFFSIZE);
-                if (recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
-                    (struct sockaddr*)&client_addr, &client_struct_length) < 0){
-                    printf("Erreur lors de la reception\n");
-                    return -1;
+                if(strncmp("FIN", server_message, 3) == 0)
+                { 
+                    FinTransmission = 1;
+                } else {
+                    memset(client_message, '\0', BUFFSIZE);
+                    if (recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
+                        (struct sockaddr*)&client_addr, &client_struct_length) < 0){
+                        printf("Erreur lors de la reception\n");
+                        return -1;
+                    }
                 }
                 printf("Message du client: %s\n", client_message);
             }

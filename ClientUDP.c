@@ -16,8 +16,9 @@
 #define SYN "SYN"
 #define ACK "ACK"
 #define SYN_ACK "SYN-ACK"
+#define FIN "FIN"
 
-void RemoveChar(char *str,int c);
+void RemoveChar(char *str);
 int check(int exp, const char *msg);
 int extract(char *chaine, char *sousChaine);
 
@@ -88,21 +89,23 @@ int main(void){
                 strncpy (num_seq,server_message,6);
                 printf("num_seq : %s\n", num_seq);
 
-                RemoveChar(server_message,6);
+                RemoveChar(server_message);
                 fwrite (server_message, 1, BUFFSIZE, fp); 
                 
                 printf("Fichier bien reçu !\n");
 
                 memset(buffer_ACK, '\0', 10);
                 sprintf(buffer_ACK, "%s%s", ACK, num_seq);
-                printf("ack message : %s\n", buffer_ACK);
                 if(sendto(socket_desc, buffer_ACK, strlen(buffer_ACK), 0,
                         (struct sockaddr*)&server_addr, server_struct_length) < 0){
                         printf("Envoie impossible\n");
                         return -1;
                 }
             } 
-        } fclose(fp);
+        } 
+        sendto(socket_desc, FIN, strlen(FIN), 0,
+                    (struct sockaddr*)&server_addr, server_struct_length);
+        fclose(fp);
     } else {
         printf("erreur Threeway handshake \n");
     }
@@ -111,13 +114,10 @@ int main(void){
     return 0;
 }
 
-void RemoveChar(char *str,int c){
+void RemoveChar(char *str){
     int x = 0;
-    c--;
     while(str[x] != '\0'){
-        if(x >= c){
-            str[x] = str[x+1];
-        }
+        str[x] = str[x+6];
         x++;
     }
 }
