@@ -21,6 +21,7 @@
 
 int check(int exp, const char *msg);
 char* Num_Sequence(int num_seq, char* char_num_seq);
+int Creation_Socket (int port, struct sockaddr_in server_addr);
 
 int main(void){
     int socket_desc, Sous_socket, num_client = 1;
@@ -33,19 +34,7 @@ int main(void){
     memset(client_message, '\0', BUFFSIZE);
     
     // Creation socket UDP :
-    check((socket_desc = socket(AF_INET, SOCK_DGRAM, 0)), 
-        "Échec de la création du socket");
-    printf("Socket créée avec succès !\n");
-    
-    // Fixe port & IP:
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    
-    // Bind aux port & @IP:
-    check(bind(socket_desc, (struct sockaddr*)&server_addr, sizeof(server_addr)), 
-        "Bind Failed!"); 
-    printf("Bind réussie\n");
+    socket_desc = Creation_Socket (PORT, server_addr);
 
     // Three-way handshake avec un client:
     int nvx_port = PORT + num_client;
@@ -64,20 +53,8 @@ int main(void){
             (struct sockaddr*)&client_addr, client_struct_length);
     
         // Creation socket UDP directe avec le client:
-        check((Sous_socket = socket(AF_INET, SOCK_DGRAM, 0)), 
-        "Échec de la création du socket");
-        printf("Sous Socket créee avec succès ! \n");
-        
-        // Fixe port & @IP:
-        ss_addr.sin_family = AF_INET;
-        ss_addr.sin_port = htons(nvx_port);
+        int Sous_socket = Creation_Socket (nvx_port, ss_addr);
         num_client += 1;  
-        ss_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-        
-        // Bind to the set port and IP:
-        check(bind(Sous_socket, (struct sockaddr*)&ss_addr, sizeof(ss_addr)), 
-        "Bind Failed!"); 
-        printf("Bind réussie\n");
         
         recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
                 (struct sockaddr*)&client_addr, &client_struct_length);
@@ -160,4 +137,25 @@ char* Num_Sequence(int num_seq, char* char_num_seq){
     sprintf(ki+6-len_k,"%d",num_seq);
     sprintf(char_num_seq,"%s",ki);
     return char_num_seq;
+}
+
+int Creation_Socket (int port, struct sockaddr_in server_addr)
+{      
+    // Creation socket UDP :
+    int descripteur_socket;
+    check((descripteur_socket = socket(AF_INET, SOCK_DGRAM, 0)), 
+        "Échec de la création du socket");
+    printf("Socket créée avec succès !\n");
+    
+    // Fixe port & IP:
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(port);
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    
+    // Bind aux port & @IP:
+    check(bind(descripteur_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)), 
+        "Bind Failed!"); 
+    printf("Bind réussie\n");
+
+    return (descripteur_socket);
 }
