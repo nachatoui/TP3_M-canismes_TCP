@@ -11,10 +11,15 @@
 // pour close 
 #include <unistd.h>
 
-#define BUFFSIZE 2000
+#define BUFFSIZE 500
 #define PORT 3000
+#define SYN "SYN"
+#define ACK "ACK"
+#define SYN_ACK "SYN-ACK"
 
 void RemoveChar(char *str,int c);
+int check(int exp, const char *msg);
+int extract(char *chaine, char *sousChaine);
 
 int main(void){
     int socket_desc;
@@ -27,12 +32,8 @@ int main(void){
     memset(client_message, '\0', BUFFSIZE);
     
     // Create socket:
-    socket_desc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    
-    if(socket_desc < 0){
-        printf("Erreur lors de la création de la socket\n");
-        return -1;
-    }
+    check((socket_desc = socket(AF_INET, SOCK_DGRAM, 0)), 
+        "Échec de la création du socket");
     printf("Socket créee avec succès \n");
     
     // Fixe port & IP:
@@ -41,9 +42,6 @@ int main(void){
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     
     // Three-way handshake avec le serveur:
-    char *SYN = "SYN";
-    char *ACK = "ACK_";
-
     sendto(socket_desc, SYN, strlen(SYN), 0,
             (struct sockaddr*)&server_addr, server_struct_length);
 
@@ -67,64 +65,46 @@ int main(void){
         // strcpy : https://www.programiz.com/c-programming/library-function/string.h/strcpy 
         // strcat : https://koor.fr/C/cstring/strcat.wp 
         printf("Reception du fichier...\n");
-        memset(server_message, '\0', sizeof(server_message));
-        recvfrom(socket_desc, server_message, sizeof(server_message), 0,
-                (struct sockaddr*)&server_addr, &server_struct_length);
-        
-        FILE *fp = fopen ("FichierTexteReçu.txt", "w"); 
+
+        char num_seq[7];
+        int FinTransmission = 0;
+        FILE *fp = fopen ("FichierTexteReçu.txt", "a"); 
         if(fp == NULL) {
-            perror ("Error in opening file");
+            perror ("Erreur lors de l'ouverture du fichier");
             exit(-1);
         }
-
-        char num_seq[4];
-        char c = server_message[0];
-        sprintf(num_seq, "%c", c);
-        printf("num_seq : %s\n", num_seq);
-
-        RemoveChar(server_message,1);
-        fwrite (server_message, 1, BUFFSIZE, fp); 
-        fclose(fp);
-        printf("Fichier bien reçu !\n");
-
-        char buffer_ACK[6];
-        memset(buffer_ACK, '\0', 30);
-        strcat(buffer_ACK, ACK);
-        strcat(buffer_ACK, num_seq);
-        printf("ack message : %s\n", buffer_ACK);
-        if(sendto(socket_desc, buffer_ACK, strlen(buffer_ACK), 0,
-                (struct sockaddr*)&server_addr, server_struct_length) < 0){
-                printf("Envoie impossible\n");
-                return -1;
-        }
-
-        // while (1)
-        // {
-        //     memset(server_message, '\0', BUFFSIZE);
-        //     memset(client_message, '\0', BUFFSIZE);
-
-        //     // Get input from the user:
-        //     printf("Enter message: ");
-        //     gets(client_message);
+        char buffer_ACK[10];
+        while(FinTransmission == 0)
+        {
+            // memset(server_message, '\0', sizeof(server_message));
+            recvfrom(socket_desc, server_message, sizeof(server_message), 0,
+                    (struct sockaddr*)&server_addr, &server_struct_length);
             
-        //     // Envoie du message au serveur:
-        //     if(sendto(socket_desc, client_message, strlen(client_message), 0,
-        //         (struct sockaddr*)&server_addr, server_struct_length) < 0){
-        //         printf("Envoie impossible\n");
-        //         return -1;
-        //     }
-            
-        //     // Reception du message du serveur:
-        //     if(recvfrom(socket_desc, server_message, BUFFSIZE, 0,
-        //         (struct sockaddr*)&server_addr, &server_struct_length) < 0){
-        //         printf("Erreur lors de la reception\n");
-        //         return -1;
-        //     }
-            
-        //     printf("Message du client: %s\n", server_message);
-        // }
+            if(strncmp("FIN", server_message, 3) == 0)
+            { 
+                FinTransmission = 1;
+            } else {
+                memset(num_seq, '\0', 7);
+                strncpy (num_seq,server_message,6);
+                printf("num_seq : %s\n", num_seq);
+
+                RemoveChar(server_message,6);
+                fwrite (server_message, 1, BUFFSIZE, fp); 
+                
+                printf("Fichier bien reçu !\n");
+
+                memset(buffer_ACK, '\0', 10);
+                sprintf(buffer_ACK, "%s%s", ACK, num_seq);
+                printf("ack message : %s\n", buffer_ACK);
+                if(sendto(socket_desc, buffer_ACK, strlen(buffer_ACK), 0,
+                        (struct sockaddr*)&server_addr, server_struct_length) < 0){
+                        printf("Envoie impossible\n");
+                        return -1;
+                }
+            } 
+        } fclose(fp);
     } else {
-        printf("erreur Threeway handshake");
+        printf("erreur Threeway handshake \n");
     }
 
     close(socket_desc);
@@ -140,5 +120,22 @@ void RemoveChar(char *str,int c){
         }
         x++;
     }
+}
+
+int extract(char *chaine, char *sousChaine)
+{
+  int i;
+  for( i = 0; i < 6; i++){
+    sousChaine[i] = chaine[i];
+  }  
+  return 0;  
+} 
+
+int check(int exp, const char *msg){
+    if (exp == (-1) ) {
+        perror(msg);
+        exit(1);
+    }
+    return exp;
 }
 
