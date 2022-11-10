@@ -87,12 +87,11 @@ int main(void){
             } else {
                 memset(num_seq, '\0', 7);
                 strncpy (num_seq,server_message,6);
-                printf("num_seq : %s\n", num_seq);
 
                 RemoveChar(server_message);
-                fwrite (server_message, 1, BUFFSIZE, fp); 
+                fwrite (server_message, 1, BUFFSIZE-6, fp); 
                 
-                printf("Fichier bien reçu !\n");
+                printf("reception N° %s\n", num_seq);
 
                 memset(buffer_ACK, '\0', 10);
                 sprintf(buffer_ACK, "%s%s", ACK, num_seq);
