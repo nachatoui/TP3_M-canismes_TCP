@@ -94,7 +94,7 @@ int main(void){
                     fflush(fp);
                     sprintf(server_message, "%s%s", char_num_seq, lecture);
 
-                    sendto(Sous_socket, server_message, strlen(server_message), 0,
+                    sendto(Sous_socket, server_message, BUFFSIZE, 0,
                         (struct sockaddr*)&client_addr, client_struct_length) ;
                     num_seq += 1;
                 }

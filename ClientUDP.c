@@ -69,6 +69,14 @@ int main(void){
 
         char num_seq[7];
         int FinTransmission = 0;
+        if (remove("FichierTexteReçu.txt") == 0){
+            printf(" Le fichier a été supprimé avec succès.\n");
+        }    
+        else
+        {    
+            printf("Impossible de supprimer le fichier\n");
+            perror("Erreur");    
+        }
         FILE *fp = fopen ("FichierTexteReçu.txt", "a"); 
         if(fp == NULL) {
             perror ("Erreur lors de l'ouverture du fichier");
@@ -77,7 +85,7 @@ int main(void){
         char buffer_ACK[10];
         while(FinTransmission == 0)
         {
-            // memset(server_message, '\0', sizeof(server_message));
+            memset(server_message, '\0', BUFFSIZE);
             recvfrom(socket_desc, server_message, sizeof(server_message), 0,
                     (struct sockaddr*)&server_addr, &server_struct_length);
             
