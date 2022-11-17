@@ -24,13 +24,14 @@
 int check(int exp, const char *msg);
 char* Num_Sequence(int num_seq, char* char_num_seq);
 int Creation_Socket (int port, struct sockaddr_in server_addr);
+void ACK_num_seq(char *str);
 
 int main(void){
     int socket_desc, Sous_socket, num_client = 1;
     struct sockaddr_in server_addr, client_addr, ss_addr;
     char server_message[BUFFSIZE], client_message[BUFFSIZE];
-    
     int client_struct_length = sizeof(client_addr);
+    int cwnd_taille = 10; 
     
     // Vide les buffers:
     memset(server_message, '\0', BUFFSIZE);
@@ -48,6 +49,7 @@ int main(void){
     sprintf(buffer_SYN_ACK, "%s%d", SYN_ACK, nvx_port);
     printf("syn ack message : %s\n", buffer_SYN_ACK);
 
+    // recvfrom est bloquant 
     recvfrom(socket_desc, client_message, BUFFSIZE, 0,
             (struct sockaddr*)&client_addr, &client_struct_length);
     if(strncmp("SYN", client_message, 3) == 0)
@@ -57,7 +59,7 @@ int main(void){
     
         // Creation socket UDP directe avec le client:
         int Sous_socket = Creation_Socket (nvx_port, ss_addr);
-        num_client += 1;  
+        num_client += 1; 
         
         recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
                 (struct sockaddr*)&client_addr, &client_struct_length);
@@ -65,6 +67,8 @@ int main(void){
         {
             // Protocole connecté !
             printf("Bien connecté ! \n");
+            printf("Client : @IP: %s et du port: %i\n",
+                inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
             // Envoie d'un fichier: 
             printf("Envoie du fichier...\n");
@@ -78,34 +82,50 @@ int main(void){
             char char_num_seq[6]; 
             int FinTransmission = 0;
             char lecture[BUFFSIZE-6];
+            /* RTT provisoire */
+            struct timeval tv;
+            tv.tv_sec = 5;
+            tv.tv_usec = 0; 
+            char buffer_last_Ack_Recu[6];
+            long last_Ack_Recu;
+
+            fd_set rset;
+            FD_ZERO(&rset);
+            int nready;
 
             while ( ! feof(fp) ) { 
-                // Envoie du fichier 
-                memset(server_message, '\0', BUFFSIZE);
-                fread(lecture, 1, BUFFSIZE-6, fp);
-                Num_Sequence(num_seq, char_num_seq);
-                fflush(fp);
-                sprintf(server_message, "%s%s", char_num_seq, lecture);
+                while (cwnd_taille != 0){
+                    FD_SET(Sous_socket, &rset);
+                    memset(server_message, '\0', BUFFSIZE);
+                    fread(lecture, 1, BUFFSIZE-6, fp);
+                    Num_Sequence(num_seq, char_num_seq);
+                    fflush(fp);
+                    sprintf(server_message, "%s%s", char_num_seq, lecture);
 
-                sendto(Sous_socket, server_message, BUFFSIZE, 0,
-                    (struct sockaddr*)&client_addr, client_struct_length) ;
-                num_seq += 1;
-            }
-            fclose(fp);
-            sendto(Sous_socket, FIN, strlen(FIN), 0,
-                    (struct sockaddr*)&client_addr, client_struct_length);
-            
-            printf("Message reçu de l'@IP: %s et du port: %i\n",
-                inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-
-            
-            while(FinTransmission == 0)
-            {
-                // reception du ack
-                if(strncmp("FIN", client_message, 3) == 0)
-                { 
-                    FinTransmission = 1;
-                } else {
+                    sendto(Sous_socket, server_message, BUFFSIZE, 0,
+                        (struct sockaddr*)&client_addr, client_struct_length) ;
+                    num_seq += 1;
+                    cwnd_taille -- ; 
+                    nready = select(Sous_socket, &rset, NULL, NULL, NULL); // empeche de bloquer au receivefrom
+                    if (FD_ISSET(Sous_socket, &rset)) { 
+                        // On a un ACK qui est arrivé 
+                        memset(client_message, '\0', BUFFSIZE);
+                        if (recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
+                            (struct sockaddr*)&client_addr, &client_struct_length) < 0){
+                            printf("Erreur lors de la reception\n");
+                            return -1;
+                        }
+                        printf("%s\n", client_message);
+                        ACK_num_seq(client_message);
+                        strcpy(buffer_last_Ack_Recu,client_message);
+                        last_Ack_Recu = strtol(buffer_last_Ack_Recu, NULL, 10 );
+                        cwnd_taille ++ ;
+                    }
+                }
+                // On a envoyé tous les messages possibles en fonction de la taille de notre fenêtre 
+                nready = select(Sous_socket, &rset, NULL, NULL, &tv);
+                // On reste bloqué en attendant la fin du timeout afin de voir si le message pourra être ACK
+                if (FD_ISSET(Sous_socket, &rset)) { 
                     memset(client_message, '\0', BUFFSIZE);
                     if (recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
                         (struct sockaddr*)&client_addr, &client_struct_length) < 0){
@@ -113,15 +133,34 @@ int main(void){
                         return -1;
                     }
                     printf("%s\n", client_message);
+                    ACK_num_seq(client_message);
+                    strcpy(buffer_last_Ack_Recu,client_message);
+                    last_Ack_Recu = strtol(buffer_last_Ack_Recu, NULL, 10 );
+                    cwnd_taille ++ ;
+                } else {
+                    // Paquets perdus => Retransmission 
+                    fseek(fp, last_Ack_Recu*(BUFFSIZE-6), SEEK_SET); // regarde à partir du début du fichier (à modif par la suite pour plus de perf)
+                    fread(lecture, 1, BUFFSIZE-6, fp);
+                    fflush(fp);
+                    sprintf(server_message, "%s%s", char_num_seq, lecture);
+
+                    sendto(Sous_socket, server_message, BUFFSIZE, 0,
+                        (struct sockaddr*)&client_addr, client_struct_length) ;
+                    num_seq += 1; // A modifier avec les ACK cumulatif 
                 }
+                
             }
+            fclose(fp);
+            sendto(Sous_socket, FIN, strlen(FIN), 0,
+                    (struct sockaddr*)&client_addr, client_struct_length);
             close(Sous_socket);
+         
+        } else {
+            printf("erreur Threeway handshake\n");
         }
-    } else {
-        printf("erreur Threeway handshake\n");
+        close(socket_desc);
+        return 0;
     }
-    close(socket_desc);
-    return 0;
 }
 
 int check(int exp, const char *msg){
@@ -166,3 +205,10 @@ int Creation_Socket (int port, struct sockaddr_in server_addr)
     return (descripteur_socket);
 }
 
+void ACK_num_seq(char *str){
+    int x = 0;
+    while(str[x] != '\0'){
+        str[x] = str[x+3];
+        x++;
+    }
+}
