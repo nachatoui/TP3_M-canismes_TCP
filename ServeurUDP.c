@@ -29,6 +29,7 @@ int main(void){
     int socket_desc, Sous_socket, num_client = 1;
     struct sockaddr_in server_addr, client_addr, ss_addr;
     char server_message[BUFFSIZE], client_message[BUFFSIZE];
+    
     int client_struct_length = sizeof(client_addr);
     
     // Vide les buffers:
@@ -77,63 +78,43 @@ int main(void){
             char char_num_seq[6]; 
             int FinTransmission = 0;
             char lecture[BUFFSIZE-6];
-            pid_t childpid_envoieFich;
 
-            // A faire sur 2 fork different pour pouvoir ecouter et envoyer au même moment 
-            childpid_envoieFich = fork();
-            if (childpid_envoieFich == -1) {
-                perror("fork");
-                exit(-1);
-            } else if (childpid_envoieFich == 0) { 
-                // dans le processus fils
-                while ( ! feof(fp) ) { 
-                    // Envoie du fichier 
-                    memset(server_message, '\0', BUFFSIZE);
-                    fread(lecture, 1, BUFFSIZE-6, fp);
-                    Num_Sequence(num_seq, char_num_seq);
-                    fflush(fp);
-                    sprintf(server_message, "%s%s", char_num_seq, lecture);
+            while ( ! feof(fp) ) { 
+                // Envoie du fichier 
+                memset(server_message, '\0', BUFFSIZE);
+                fread(lecture, 1, BUFFSIZE-6, fp);
+                Num_Sequence(num_seq, char_num_seq);
+                fflush(fp);
+                sprintf(server_message, "%s%s", char_num_seq, lecture);
 
-                    sendto(Sous_socket, server_message, BUFFSIZE, 0,
-                        (struct sockaddr*)&client_addr, client_struct_length) ;
-                    num_seq += 1;
-                }
-                fclose(fp);
-                sendto(Sous_socket, FIN, strlen(FIN), 0,
-                        (struct sockaddr*)&client_addr, client_struct_length);
-                exit(-1);
+                sendto(Sous_socket, server_message, BUFFSIZE, 0,
+                    (struct sockaddr*)&client_addr, client_struct_length) ;
+                num_seq += 1;
             }
+            fclose(fp);
+            sendto(Sous_socket, FIN, strlen(FIN), 0,
+                    (struct sockaddr*)&client_addr, client_struct_length);
             
             printf("Message reçu de l'@IP: %s et du port: %i\n",
                 inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
-            pid_t childpid_receptionFich = fork();
-            if (childpid_receptionFich == -1) {
-                perror("fork");
-                exit(-1);
-            } else if (childpid_receptionFich == 0) { 
-                while(FinTransmission == 0)
-                {
-                    // reception du ack
-                    if(strncmp("FIN", client_message, 3) == 0)
-                    { 
-                        FinTransmission = 1;
-                    } else {
-                        memset(client_message, '\0', BUFFSIZE);
-                        if (recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
-                            (struct sockaddr*)&client_addr, &client_struct_length) < 0){
-                            printf("Erreur lors de la reception\n");
-                            return -1;
-                        }
-                        printf("%s\n", client_message);
+            
+            while(FinTransmission == 0)
+            {
+                // reception du ack
+                if(strncmp("FIN", client_message, 3) == 0)
+                { 
+                    FinTransmission = 1;
+                } else {
+                    memset(client_message, '\0', BUFFSIZE);
+                    if (recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
+                        (struct sockaddr*)&client_addr, &client_struct_length) < 0){
+                        printf("Erreur lors de la reception\n");
+                        return -1;
                     }
+                    printf("%s\n", client_message);
                 }
-                exit(-1);
             }
-            int statu1, statu2;
-            // Attend la fin des process fils
-            waitpid(childpid_envoieFich, &statu1, 0);
-            waitpid(childpid_receptionFich, &statu2, 0);
             close(Sous_socket);
         }
     } else {
