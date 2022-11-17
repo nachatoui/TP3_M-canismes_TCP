@@ -88,7 +88,6 @@ int main(void){
             memset(server_message, '\0', BUFFSIZE);
             recvfrom(socket_desc, server_message, sizeof(server_message), 0,
                     (struct sockaddr*)&server_addr, &server_struct_length);
-            
             if(strncmp("FIN", server_message, 3) == 0)
             { 
                 FinTransmission = 1;
@@ -104,7 +103,7 @@ int main(void){
                 memset(buffer_ACK, '\0', 10);
                 sprintf(buffer_ACK, "%s%s", ACK, num_seq);
                 if(sendto(socket_desc, buffer_ACK, strlen(buffer_ACK), 0,
-                        (struct sockaddr*)&server_addr, server_struct_length) < 0){
+                        (struct sockaddr*)&server_addr, server_struct_length)<0){
                         printf("Envoie impossible\n");
                         return -1;
                 }

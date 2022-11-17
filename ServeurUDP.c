@@ -84,8 +84,8 @@ int main(void){
             char lecture[BUFFSIZE-6];
             /* RTT provisoire */
             struct timeval tv;
-            tv.tv_sec = 5;
-            tv.tv_usec = 0; 
+            struct timeval tv1;
+            
             char buffer_last_Ack_Recu[6];
             long last_Ack_Recu;
 
@@ -95,7 +95,6 @@ int main(void){
 
             while ( ! feof(fp) ) { 
                 while (cwnd_taille != 0){
-                    FD_SET(Sous_socket, &rset);
                     memset(server_message, '\0', BUFFSIZE);
                     fread(lecture, 1, BUFFSIZE-6, fp);
                     Num_Sequence(num_seq, char_num_seq);
@@ -104,9 +103,14 @@ int main(void){
 
                     sendto(Sous_socket, server_message, BUFFSIZE, 0,
                         (struct sockaddr*)&client_addr, client_struct_length) ;
+                    printf("message envoyé !\n");
                     num_seq += 1;
                     cwnd_taille -- ; 
-                    nready = select(Sous_socket, &rset, NULL, NULL, NULL); // empeche de bloquer au receivefrom
+
+                    FD_SET(Sous_socket, &rset);
+                    tv1.tv_sec = 0;
+                    tv1.tv_usec = 0; 
+                    nready = select(Sous_socket+1, &rset, NULL, NULL, &tv1); // empeche de bloquer au receivefrom
                     if (FD_ISSET(Sous_socket, &rset)) { 
                         // On a un ACK qui est arrivé 
                         memset(client_message, '\0', BUFFSIZE);
@@ -123,7 +127,10 @@ int main(void){
                     }
                 }
                 // On a envoyé tous les messages possibles en fonction de la taille de notre fenêtre 
-                nready = select(Sous_socket, &rset, NULL, NULL, &tv);
+                tv.tv_sec = 2;
+                tv.tv_usec = 0;
+                FD_SET(Sous_socket, &rset);
+                nready = select(Sous_socket+1, &rset, NULL, NULL, &tv);
                 // On reste bloqué en attendant la fin du timeout afin de voir si le message pourra être ACK
                 if (FD_ISSET(Sous_socket, &rset)) { 
                     memset(client_message, '\0', BUFFSIZE);
@@ -147,14 +154,12 @@ int main(void){
                     sendto(Sous_socket, server_message, BUFFSIZE, 0,
                         (struct sockaddr*)&client_addr, client_struct_length) ;
                     num_seq += 1; // A modifier avec les ACK cumulatif 
-                }
-                
+                }   
             }
             fclose(fp);
             sendto(Sous_socket, FIN, strlen(FIN), 0,
                     (struct sockaddr*)&client_addr, client_struct_length);
             close(Sous_socket);
-         
         } else {
             printf("erreur Threeway handshake\n");
         }
