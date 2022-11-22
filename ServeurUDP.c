@@ -78,7 +78,7 @@ int main(void){
                 exit(-1);
             }
             memset(server_message, '\0', BUFFSIZE);
-            int num_seq = 1;
+            int num_seq = 0;
             char char_num_seq[6]; 
             int FinTransmission = 0;
             char lecture[BUFFSIZE-6];
@@ -95,13 +95,11 @@ int main(void){
 
             while ( 1 ) { 
                 if (num_seq == last_Ack_Recu) {
-                        break;
+                    break;
                 }
                 while (cwnd_taille != 0){
-                    if (num_seq == last_Ack_Recu) {
-                        break;
-                    }
                     if (! feof(fp)) {
+                        num_seq += 1;
                         memset(server_message, '\0', BUFFSIZE);
                         memset(lecture, '\0', BUFFSIZE-6);
                         fread(lecture, 1, BUFFSIZE-6, fp);
@@ -112,7 +110,6 @@ int main(void){
                         sendto(Sous_socket, server_message, BUFFSIZE, 0,
                             (struct sockaddr*)&client_addr, client_struct_length) ;
                         printf("message envoyé n° %d !\n", num_seq);
-                        num_seq += 1;
                         cwnd_taille -- ; 
                     }
 
@@ -133,6 +130,9 @@ int main(void){
                         strcpy(buffer_last_Ack_Recu,client_message);
                         last_Ack_Recu = strtol(buffer_last_Ack_Recu, NULL, 10 );
                         cwnd_taille ++ ;
+                    }
+                    if (num_seq == last_Ack_Recu) {
+                        break;
                     }
                 }
                 // On a envoyé tous les messages possibles en fonction de la taille de notre fenêtre 
@@ -162,7 +162,7 @@ int main(void){
 
                     sendto(Sous_socket, server_message, BUFFSIZE, 0,
                         (struct sockaddr*)&client_addr, client_struct_length) ;
-                    num_seq += 1; // A modifier avec les ACK cumulatif 
+                    // num_seq += 1; // A modifier avec les ACK cumulatif 
                 } 
             }
             fclose(fp);
