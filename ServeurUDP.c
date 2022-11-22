@@ -93,19 +93,28 @@ int main(void){
             FD_ZERO(&rset);
             int nready;
 
-            while ( ! feof(fp) ) { 
+            while ( 1 ) { 
+                if (num_seq == last_Ack_Recu) {
+                        break;
+                }
                 while (cwnd_taille != 0){
-                    memset(server_message, '\0', BUFFSIZE);
-                    fread(lecture, 1, BUFFSIZE-6, fp);
-                    Num_Sequence(num_seq, char_num_seq);
-                    fflush(fp);
-                    sprintf(server_message, "%s%s", char_num_seq, lecture);
+                    if (num_seq == last_Ack_Recu) {
+                        break;
+                    }
+                    if (! feof(fp)) {
+                        memset(server_message, '\0', BUFFSIZE);
+                        memset(lecture, '\0', BUFFSIZE-6);
+                        fread(lecture, 1, BUFFSIZE-6, fp);
+                        Num_Sequence(num_seq, char_num_seq);
+                        fflush(fp);
+                        sprintf(server_message, "%s%s", char_num_seq, lecture);
 
-                    sendto(Sous_socket, server_message, BUFFSIZE, 0,
-                        (struct sockaddr*)&client_addr, client_struct_length) ;
-                    printf("message envoyé !\n");
-                    num_seq += 1;
-                    cwnd_taille -- ; 
+                        sendto(Sous_socket, server_message, BUFFSIZE, 0,
+                            (struct sockaddr*)&client_addr, client_struct_length) ;
+                        printf("message envoyé n° %d !\n", num_seq);
+                        num_seq += 1;
+                        cwnd_taille -- ; 
+                    }
 
                     FD_SET(Sous_socket, &rset);
                     tv1.tv_sec = 0;
@@ -154,7 +163,7 @@ int main(void){
                     sendto(Sous_socket, server_message, BUFFSIZE, 0,
                         (struct sockaddr*)&client_addr, client_struct_length) ;
                     num_seq += 1; // A modifier avec les ACK cumulatif 
-                }   
+                } 
             }
             fclose(fp);
             sendto(Sous_socket, FIN, strlen(FIN), 0,
