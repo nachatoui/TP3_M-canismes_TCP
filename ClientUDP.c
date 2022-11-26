@@ -50,7 +50,7 @@ int main(void){
             (struct sockaddr*)&server_addr, &server_struct_length);
     if(strncmp("SYN-ACK", server_message, 3) == 0)
     {
-        int nvx_port = ((int)server_message[8]-48)*1000 + ((int)server_message[9]-48)*100+ ((int)server_message[10]-48)*10 + ((int)server_message[11]-48);
+        int nvx_port = ((int)server_message[7]-48)*1000 + ((int)server_message[8]-48)*100+ ((int)server_message[9]-48)*10 + ((int)server_message[10]-48);
         printf("nouveau port : %d\n", nvx_port);
 
         sendto(socket_desc, ACK, strlen(ACK), 0,
@@ -65,7 +65,9 @@ int main(void){
         // reception d'un fichier : https://gist.github.com/XBachirX/865b00ba7a7c86b4fc2d7443b2c4f238 
         // strcpy : https://www.programiz.com/c-programming/library-function/string.h/strcpy 
         // strcat : https://koor.fr/C/cstring/strcat.wp 
-        printf("Reception du fichier...\n");
+        sendto(socket_desc, "FichierTexte.txt", strlen("FichierTexte.txt"), 0,
+            (struct sockaddr*)&server_addr, server_struct_length);
+        printf("Demande de fichier envoyé ! \n");
 
         char num_seq[7];
         if (remove("FichierTexteReçu.txt") == 0){

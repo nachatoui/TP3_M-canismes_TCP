@@ -17,7 +17,7 @@
 #define BUFFSIZE 500
 #define SYN "SYN"
 #define ACK "ACK"
-#define SYN_ACK "SYN-ACK "
+#define SYN_ACK "SYN-ACK"
 #define FIN "FIN"
 
 int check(int exp, const char *msg);
@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
         if(strncmp("ACK", client_message, 3) == 0)
         {
             printf("reception du ACK :) /n");
-            
+
             // Creation socket UDP directe avec le client:
             int Sous_socket = Creation_Socket (nvx_port, ss_addr);
             num_client += 1; 
@@ -82,9 +82,15 @@ int main(int argc, char* argv[])
             printf("Client : @IP: %s et du port: %i\n",
                 inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
-            // Envoie d'un fichier: 
-            printf("Envoie du fichier...\n");
-            FILE *fp = fopen("FichierTexte.txt","r");
+            
+            //Fichier demandé par le client :
+            memset(client_message, '\0', BUFFSIZE); 
+            recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
+                            (struct sockaddr*)&client_addr, &client_struct_length);
+            printf("Nom du fichier demandé : %s \n", client_message);
+
+            // Envoie d'un fichier:
+            FILE *fp = fopen(client_message,"r");
             if(fp == NULL) {
                 perror ("Error in opening file");
                 exit(-1);
