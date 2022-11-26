@@ -68,7 +68,6 @@ int main(void){
         printf("Reception du fichier...\n");
 
         char num_seq[7];
-        int FinTransmission = 0;
         if (remove("FichierTexteReçu.txt") == 0){
             printf(" Le fichier a été supprimé avec succès.\n");
         }    
@@ -83,30 +82,39 @@ int main(void){
             exit(-1);
         }
         char buffer_ACK[10];
-        while(FinTransmission == 0)
+        char SEG_Received_en_Att [500];
+        char last_ACK_cumulatif[7] = "000000";
+        while( 1 )
         {
             memset(server_message, '\0', BUFFSIZE);
             recvfrom(socket_desc, server_message, sizeof(server_message), 0,
                     (struct sockaddr*)&server_addr, &server_struct_length);
             if(strncmp("FIN", server_message, 3) == 0)
             { 
-                FinTransmission = 1;
+                break;
             } else {
                 memset(num_seq, '\0', 7);
                 strncpy (num_seq,server_message,6);
-
                 RemoveChar(server_message);
-                fwrite (server_message, 1, BUFFSIZE-6, fp); 
-                
                 printf("reception N° %s\n", num_seq);
-
-                memset(buffer_ACK, '\0', 10);
-                sprintf(buffer_ACK, "%s%s", ACK, num_seq);
-                if(sendto(socket_desc, buffer_ACK, strlen(buffer_ACK), 0,
-                        (struct sockaddr*)&server_addr, server_struct_length)<0){
-                        printf("Envoie impossible\n");
-                        return -1;
+                if ( atoi(num_seq) == (atoi(last_ACK_cumulatif)+1) )
+                {
+                    strncpy (last_ACK_cumulatif, num_seq,6); 
+                    fwrite (server_message, 1, BUFFSIZE-6, fp);  
+                } else {
+                    // SEG_Received_en_Att[num_seq] = 
+                    // fwrite (server_message, 1, BUFFSIZE-6, fp); Ecrire dans un autre fichier pour stocker  les messages après celui perdus
                 }
+                // checker pour rajouter les textes en attente dans SEG_Received_en_Att 
+                
+                memset(buffer_ACK, '\0', 10);
+                sprintf(buffer_ACK, "%s%s", ACK, last_ACK_cumulatif);
+                printf("%s \n" , buffer_ACK);
+                if(sendto(socket_desc, buffer_ACK, strlen(buffer_ACK), 0,
+                    (struct sockaddr*)&server_addr, server_struct_length)<0){
+                    printf("Envoie impossible\n");
+                    return -1;
+                }                
             } 
         } 
         sendto(socket_desc, FIN, strlen(FIN), 0,

@@ -15,7 +15,6 @@
 #include<sys/wait.h>
 
 #define BUFFSIZE 500
-#define PORT 3000
 #define SYN "SYN"
 #define ACK "ACK"
 #define SYN_ACK "SYN-ACK "
@@ -26,7 +25,17 @@ char* Num_Sequence(int num_seq, char* char_num_seq);
 int Creation_Socket (int port, struct sockaddr_in server_addr);
 void ACK_num_seq(char *str);
 
-int main(void){
+int main(int argc, char* argv[])
+{
+    if (argc != 2)
+    {
+        perror("nombre d'argument incorrect. exmeple : ./serveur 3000"); 
+        return (-1); 
+    }
+
+    int PORT = atoi(argv[1]);
+    printf("PORT %d \n", PORT);
+
     int socket_desc, Sous_socket, num_client = 1;
     struct sockaddr_in server_addr, client_addr, ss_addr;
     char server_message[BUFFSIZE], client_message[BUFFSIZE];
@@ -80,7 +89,6 @@ int main(void){
             memset(server_message, '\0', BUFFSIZE);
             int num_seq = 0;
             char char_num_seq[6]; 
-            int FinTransmission = 0;
             char lecture[BUFFSIZE-6];
             /* RTT provisoire */
             struct timeval tv;
@@ -128,7 +136,7 @@ int main(void){
                         printf("%s\n", client_message);
                         ACK_num_seq(client_message);
                         strcpy(buffer_last_Ack_Recu,client_message);
-                        last_Ack_Recu = strtol(buffer_last_Ack_Recu, NULL, 10 );
+                        last_Ack_Recu = strtol(buffer_last_Ack_Recu, NULL, 10 ); //atoi
                         cwnd_taille ++ ;
                     }
                     if (num_seq == last_Ack_Recu) {
