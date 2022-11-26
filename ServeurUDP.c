@@ -66,14 +66,17 @@ int main(int argc, char* argv[])
         sendto(socket_desc, buffer_SYN_ACK, strlen(buffer_SYN_ACK), 0,
             (struct sockaddr*)&client_addr, client_struct_length);
     
-        // Creation socket UDP directe avec le client:
-        int Sous_socket = Creation_Socket (nvx_port, ss_addr);
-        num_client += 1; 
-        
-        recvfrom(Sous_socket, client_message, BUFFSIZE, 0,
+        recvfrom(socket_desc, client_message, BUFFSIZE, 0,
                 (struct sockaddr*)&client_addr, &client_struct_length);
+
         if(strncmp("ACK", client_message, 3) == 0)
         {
+            printf("reception du ACK :) /n");
+            
+            // Creation socket UDP directe avec le client:
+            int Sous_socket = Creation_Socket (nvx_port, ss_addr);
+            num_client += 1; 
+
             // Protocole connecté !
             printf("Bien connecté ! \n");
             printf("Client : @IP: %s et du port: %i\n",

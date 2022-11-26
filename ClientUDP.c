@@ -53,12 +53,12 @@ int main(void){
         int nvx_port = ((int)server_message[8]-48)*1000 + ((int)server_message[9]-48)*100+ ((int)server_message[10]-48)*10 + ((int)server_message[11]-48);
         printf("nouveau port : %d\n", nvx_port);
 
-        // Creation socket UDP directe avec le client:
-        server_addr.sin_port = htons(nvx_port);
-
         sendto(socket_desc, ACK, strlen(ACK), 0,
             (struct sockaddr*)&server_addr, server_struct_length);
         
+        // Creation socket UDP directe avec le client:
+        server_addr.sin_port = htons(nvx_port);
+
         // Protocole connecté !
         printf("Bien connecté ! \n");
 
